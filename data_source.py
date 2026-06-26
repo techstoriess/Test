@@ -52,24 +52,11 @@ def _to_unix(ts) -> int:
             return int(pd.Timestamp(ts).timestamp())
 
 
-def get_history_yfinance(symbol: str, timeframe: str) -> list:
-    interval = _YF_INTERVAL_MAP.get(timeframe, "1d")
-    period   = _YF_PERIOD_MAP.get(timeframe, "1y")
-
-    try:
-        ticker = yf.Ticker(symbol)
-        df = ticker.history(period=period, interval=interval, auto_adjust=True, repair=False)
-    except Exception as e:
-        print(f"[yfinance] download error for {symbol}: {e}")
-        return []
-
+def _df_to_candles(df) -> list:
+    """Convert a yfinance OHLCV DataFrame to sorted, deduplicated candle dicts."""
     if df is None or df.empty:
-        print(f"[yfinance] no data for {symbol} ({interval}/{period})")
         return []
-
     df = df.dropna(subset=["Open", "High", "Low", "Close"])
-    df = df[df["Volume"] >= 0]   # keep zero-volume rows (pre/post market may have none)
-
     result = []
     for ts, row in df.iterrows():
         t = _to_unix(ts)
@@ -83,8 +70,6 @@ def get_history_yfinance(symbol: str, timeframe: str) -> list:
             "close":  round(float(row["Close"]),  4),
             "volume": round(float(row["Volume"]), 2),
         })
-
-    # Lightweight Charts requires strictly ascending time; deduplicate
     seen = set()
     unique = []
     for c in result:
@@ -95,17 +80,50 @@ def get_history_yfinance(symbol: str, timeframe: str) -> list:
     return unique
 
 
-def get_price_yfinance(symbol: str) -> float:
+def get_history_yfinance(symbol: str, timeframe: str) -> list:
+    interval = _YF_INTERVAL_MAP.get(timeframe, "1d")
+    period   = _YF_PERIOD_MAP.get(timeframe, "1y")
+
+    # Attempt 1: Ticker.history()
     try:
-        info = yf.Ticker(symbol).fast_info
-        price = float(info.last_price)
+        df = yf.Ticker(symbol).history(period=period, interval=interval, auto_adjust=True)
+        candles = _df_to_candles(df)
+        if candles:
+            return candles
+    except Exception as e:
+        print(f"[yfinance] Ticker.history failed for {symbol}: {e}")
+
+    # Attempt 2: yf.download() — more robust for some regions / proxies
+    try:
+        df = yf.download(symbol, period=period, interval=interval,
+                         auto_adjust=True, progress=False, threads=False)
+        # download() returns MultiIndex columns when multi=True; flatten
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+        candles = _df_to_candles(df)
+        if candles:
+            return candles
+    except Exception as e:
+        print(f"[yfinance] yf.download failed for {symbol}: {e}")
+
+    print(f"[yfinance] no data returned for {symbol} ({interval}/{period})")
+    return []
+
+
+def get_price_yfinance(symbol: str) -> float:
+    # Attempt 1: fast_info (cheapest)
+    try:
+        price = float(yf.Ticker(symbol).fast_info.last_price)
         if price and price > 0:
             return price
     except Exception:
         pass
-    # Fallback: last 1-minute bar
+    # Attempt 2: last close from 1-day 1m bars
     try:
-        df = yf.Ticker(symbol).history(period="1d", interval="1m", auto_adjust=True)
+        df = yf.download(symbol, period="1d", interval="1m",
+                         auto_adjust=True, progress=False, threads=False)
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
         if not df.empty:
             return float(df["Close"].iloc[-1])
     except Exception:

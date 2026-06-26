@@ -1,6 +1,6 @@
 flask==3.0.3
 flask-socketio==5.3.6
 flask-cors==4.0.1
-yfinance==0.2.40
+yfinance>=0.2.54
 websocket-client==1.8.0
 requests==2.32.3
