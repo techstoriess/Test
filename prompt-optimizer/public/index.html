@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prompt Optimizer</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <header>
+    <div class="logo">
+      <span class="logo-icon">✦</span>
+      <span>PromptForge</span>
+    </div>
+    <p class="tagline">Turn rough ideas into powerful AI prompts — instantly</p>
+  </header>
+
+  <main>
+    <section class="input-section">
+      <div class="input-card">
+        <label for="idea-input">Your Idea</label>
+        <textarea
+          id="idea-input"
+          placeholder="e.g. I want to write a blog post about productivity tips for developers..."
+          rows="4"
+        ></textarea>
+        <div class="input-footer">
+          <span id="char-count" class="char-count">0 / 1000</span>
+          <button id="optimize-btn" class="btn-primary">
+            <span class="btn-text">Optimize Prompt</span>
+            <span class="btn-icon">→</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="results-section" class="results-section hidden">
+      <h2 class="results-title">Optimized Prompts</h2>
+      <div class="results-grid">
+        <!-- Claude -->
+        <div class="result-card" id="card-claude">
+          <div class="card-header claude-header">
+            <div class="model-info">
+              <div class="model-logo claude-logo">C</div>
+              <div>
+                <div class="model-name">Claude</div>
+                <div class="model-sub">claude-sonnet-4-6 · Anthropic</div>
+              </div>
+            </div>
+            <div class="card-actions">
+              <button class="copy-btn" data-target="claude-result" title="Copy result">⧉</button>
+              <span class="status-badge" id="status-claude">waiting</span>
+            </div>
+          </div>
+          <div class="card-body" id="claude-result">
+            <div class="skeleton-loader">
+              <div class="skeleton-line"></div>
+              <div class="skeleton-line short"></div>
+              <div class="skeleton-line"></div>
+              <div class="skeleton-line short"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gemini -->
+        <div class="result-card" id="card-gemini">
+          <div class="card-header gemini-header">
+            <div class="model-info">
+              <div class="model-logo gemini-logo">G</div>
+              <div>
+                <div class="model-name">Gemini</div>
+                <div class="model-sub">gemini-1.5-flash · Google</div>
+              </div>
+            </div>
+            <div class="card-actions">
+              <button class="copy-btn" data-target="gemini-result" title="Copy result">⧉</button>
+              <span class="status-badge" id="status-gemini">waiting</span>
+            </div>
+          </div>
+          <div class="card-body" id="gemini-result">
+            <div class="skeleton-loader">
+              <div class="skeleton-line"></div>
+              <div class="skeleton-line short"></div>
+              <div class="skeleton-line"></div>
+              <div class="skeleton-line short"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ChatGPT -->
+        <div class="result-card" id="card-chatgpt">
+          <div class="card-header chatgpt-header">
+            <div class="model-info">
+              <div class="model-logo chatgpt-logo">✦</div>
+              <div>
+                <div class="model-name">ChatGPT</div>
+                <div class="model-sub">gpt-4o-mini · OpenAI</div>
+              </div>
+            </div>
+            <div class="card-actions">
+              <button class="copy-btn" data-target="chatgpt-result" title="Copy result">⧉</button>
+              <span class="status-badge" id="status-chatgpt">waiting</span>
+            </div>
+          </div>
+          <div class="card-body" id="chatgpt-result">
+            <div class="skeleton-loader">
+              <div class="skeleton-line"></div>
+              <div class="skeleton-line short"></div>
+              <div class="skeleton-line"></div>
+              <div class="skeleton-line short"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>PromptForge · Powered by Claude, Gemini & ChatGPT</p>
+  </footer>
+
+  <div id="toast" class="toast hidden">Copied to clipboard!</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
