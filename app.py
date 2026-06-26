@@ -2,9 +2,6 @@ import json
 import threading
 import time
 
-import eventlet
-eventlet.monkey_patch()
-
 from flask import Flask, jsonify, request, render_template
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_cors import CORS
@@ -14,7 +11,7 @@ import data_source as ds
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "trading-dashboard-secret"
 CORS(app)
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 # ---------------------------------------------------------------------------
 # Hyperliquid WebSocket relay
@@ -105,7 +102,7 @@ _yf_poll_lock = threading.Lock()
 
 def _yf_poller():
     while True:
-        eventlet.sleep(3)
+        time.sleep(3)
         with _yf_poll_lock:
             symbols = list(_yf_poll_symbols.keys())
         for symbol in symbols:
@@ -212,5 +209,6 @@ def on_disconnect():
 
 if __name__ == "__main__":
     _start_hl_ws()
-    eventlet.spawn(_yf_poller)
-    socketio.run(app, host="0.0.0.0", port=5000, debug=False)
+    t = threading.Thread(target=_yf_poller, daemon=True)
+    t.start()
+    socketio.run(app, host="0.0.0.0", port=5000, debug=False, allow_unsafe_werkzeug=True)
