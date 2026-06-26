@@ -205,16 +205,50 @@ PROVIDERS = {
         "label": "Hyperliquid (Crypto)",
         "get_history": get_history_hyperliquid,
         "get_price": get_price_hyperliquid,
-        "default_symbols": ["BTC", "ETH", "SOL", "ARB", "AVAX", "DOGE", "MATIC", "LINK"],
+        "default_symbols": [
+            "BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "ADA", "AVAX",
+            "LINK", "DOT", "MATIC", "ARB", "OP", "SUI", "APT", "INJ",
+        ],
         "timeframes": ["1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w"],
     },
-    "yfinance": {
-        "label": "yfinance (Stocks/ETFs)",
+    "india": {
+        "label": "India NSE/BSE (yfinance)",
         "get_history": get_history_yfinance,
         "get_price": get_price_yfinance,
         "default_symbols": [
-            "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ICICIBANK.NS",
-            "SBIN.NS", "WIPRO.NS", "BAJFINANCE.NS", "AAPL", "MSFT", "GOOGL", "TSLA",
+            # Nifty 50 heavyweights
+            "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
+            "HINDUNILVR.NS", "SBIN.NS", "BAJFINANCE.NS", "BHARTIARTL.NS", "KOTAKBANK.NS",
+            "LT.NS", "HCLTECH.NS", "ASIANPAINT.NS", "AXISBANK.NS", "MARUTI.NS",
+            "SUNPHARMA.NS", "TITAN.NS", "WIPRO.NS", "ULTRACEMCO.NS", "NESTLEIND.NS",
+            # Mid-cap favourites
+            "ADANIENT.NS", "ADANIPORTS.NS", "TATAMOTORS.NS", "TATASTEEL.NS",
+            "POWERGRID.NS", "NTPC.NS", "ONGC.NS", "COALINDIA.NS", "DIVISLAB.NS",
+            "DRREDDY.NS", "CIPLA.NS", "BAJAJFINSV.NS", "TECHM.NS", "INDUSINDBK.NS",
+            # BSE-listed (use .BO suffix)
+            "SENSEX.BO",
+            # Nifty index
+            "^NSEI",
+        ],
+        "timeframes": ["1m", "5m", "15m", "30m", "1h", "1d", "1w"],
+    },
+    "us": {
+        "label": "US Stocks (yfinance)",
+        "get_history": get_history_yfinance,
+        "get_price": get_price_yfinance,
+        "default_symbols": [
+            # Mega-cap tech
+            "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "AVGO",
+            # Finance
+            "JPM", "BAC", "GS", "MS", "V", "MA",
+            # Healthcare
+            "JNJ", "UNH", "PFE", "ABBV", "MRK",
+            # Energy & industrial
+            "XOM", "CVX", "CAT", "BA", "GE",
+            # ETFs
+            "SPY", "QQQ", "IWM", "DIA", "GLD", "TLT",
+            # Indices
+            "^GSPC", "^NDX", "^DJI", "^VIX",
         ],
         "timeframes": ["1m", "5m", "15m", "30m", "1h", "1d", "1w"],
     },
