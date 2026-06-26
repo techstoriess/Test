@@ -150,6 +150,111 @@ def api_history():
     return jsonify(candles)
 
 
+@app.route("/api/indicators")
+def api_indicators():
+    """
+    Compute technical indicators server-side from OHLCV data.
+    Query params: symbol, timeframe, source, indicator (sma/ema/bb/rsi/macd), period
+    Returns a list of {time, value} or {time, upper, middle, lower} for BB,
+    or {time, macd, signal, hist} for MACD.
+    """
+    symbol    = request.args.get("symbol", "")
+    timeframe = request.args.get("timeframe", "1h")
+    source    = request.args.get("source", "hyperliquid")
+    indicator = request.args.get("indicator", "sma").lower()
+    period    = int(request.args.get("period", 20))
+
+    if not symbol:
+        return jsonify({"error": "symbol required"}), 400
+
+    candles = ds.get_history(symbol, timeframe, source)
+    if not candles:
+        return jsonify([])
+
+    closes = [c["close"] for c in candles]
+    times  = [c["time"]  for c in candles]
+
+    def sma(data, n):
+        out = []
+        for i in range(len(data)):
+            if i < n - 1:
+                out.append(None)
+            else:
+                out.append(sum(data[i - n + 1:i + 1]) / n)
+        return out
+
+    def ema(data, n):
+        out = [None] * len(data)
+        k = 2 / (n + 1)
+        # find first valid window
+        start = n - 1
+        if start >= len(data):
+            return out
+        out[start] = sum(data[:n]) / n
+        for i in range(start + 1, len(data)):
+            out[i] = data[i] * k + out[i - 1] * (1 - k)
+        return out
+
+    if indicator == "sma":
+        vals = sma(closes, period)
+        return jsonify([{"time": t, "value": round(v, 4)} for t, v in zip(times, vals) if v is not None])
+
+    if indicator == "ema":
+        vals = ema(closes, period)
+        return jsonify([{"time": t, "value": round(v, 4)} for t, v in zip(times, vals) if v is not None])
+
+    if indicator == "bb":
+        sma_vals = sma(closes, period)
+        result = []
+        for i, (t, mid) in enumerate(zip(times, sma_vals)):
+            if mid is None:
+                continue
+            window = closes[i - period + 1:i + 1]
+            std = (sum((x - mid) ** 2 for x in window) / period) ** 0.5
+            result.append({"time": t, "upper": round(mid + 2 * std, 4),
+                           "middle": round(mid, 4), "lower": round(mid - 2 * std, 4)})
+        return jsonify(result)
+
+    if indicator == "rsi":
+        n = period
+        result = []
+        for i in range(n, len(closes)):
+            window = closes[i - n:i + 1]
+            gains = [max(window[j] - window[j-1], 0) for j in range(1, len(window))]
+            losses = [max(window[j-1] - window[j], 0) for j in range(1, len(window))]
+            ag = sum(gains) / n
+            al = sum(losses) / n
+            rs = ag / al if al != 0 else 100
+            rsi = 100 - (100 / (1 + rs))
+            result.append({"time": times[i], "value": round(rsi, 2)})
+        return jsonify(result)
+
+    if indicator == "macd":
+        fast, slow, sig = 12, 26, 9
+        fast_ema = ema(closes, fast)
+        slow_ema = ema(closes, slow)
+        macd_line = [f - s if f is not None and s is not None else None
+                     for f, s in zip(fast_ema, slow_ema)]
+        valid_macd = [v for v in macd_line if v is not None]
+        # signal = EMA(9) of macd_line
+        sig_ema_raw = ema(valid_macd, sig)
+        # re-align
+        offset = next(i for i, v in enumerate(macd_line) if v is not None)
+        result = []
+        for i, (t, m) in enumerate(zip(times, macd_line)):
+            if m is None:
+                continue
+            vi = i - offset
+            sv = sig_ema_raw[vi]
+            if sv is None:
+                continue
+            result.append({"time": t, "macd": round(m, 6),
+                           "signal": round(sv, 6), "hist": round(m - sv, 6)})
+        return jsonify(result)
+
+    return jsonify({"error": f"unknown indicator: {indicator}"}), 400
+
+
 # ---------------------------------------------------------------------------
 # Socket.IO events
 # ---------------------------------------------------------------------------

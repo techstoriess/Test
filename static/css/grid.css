@@ -190,12 +190,95 @@ html, body {
 
 .custom-symbol-input.visible { display: block; }
 
-/* Chart area */
+/* Indicator toolbar */
+.indicator-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  min-height: 30px;
+}
+
+.indicator-toolbar select,
+.indicator-toolbar input[type=number] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.indicator-toolbar input[type=number] { width: 52px; }
+
+.indicator-toolbar label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.ind-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  color: var(--text);
+}
+
+.ind-badge button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.ind-badge button:hover { color: var(--red); }
+
+.ind-add-btn {
+  background: var(--border);
+  border: none;
+  color: var(--accent);
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.ind-add-btn:hover { background: #21262d; }
+
+/* Chart area — split into main + sub pane */
 .chart-area {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.chart-main {
   flex: 1;
   min-height: 0;
   position: relative;
 }
+
+.chart-sub {
+  height: 90px;
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  position: relative;
+  display: none;
+}
+
+.chart-sub.visible { display: block; }
 
 /* Loading overlay */
 .chart-loading {

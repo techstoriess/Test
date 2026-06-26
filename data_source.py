@@ -10,8 +10,9 @@ OHLCV format: {"time": unix_timestamp_seconds, "open": f, "high": f, "low": f, "
 """
 
 import time
-import datetime
+import calendar
 import yfinance as yf
+import pandas as pd
 
 # ---------------------------------------------------------------------------
 # yfinance (Indian stocks + anything Yahoo supports)
@@ -27,6 +28,7 @@ _YF_INTERVAL_MAP = {
     "1w":  "1wk",
 }
 
+# yfinance caps intraday history: 1m→7d, 5/15/30m→60d, 1h→730d
 _YF_PERIOD_MAP = {
     "1m":  "5d",
     "5m":  "60d",
@@ -38,38 +40,77 @@ _YF_PERIOD_MAP = {
 }
 
 
+def _to_unix(ts) -> int:
+    """Convert a pandas Timestamp (tz-aware or naive) to a UTC unix int."""
+    try:
+        # tz-aware → convert to UTC then to epoch
+        return int(ts.tz_convert("UTC").timestamp())
+    except Exception:
+        try:
+            return int(ts.timestamp())
+        except Exception:
+            return int(pd.Timestamp(ts).timestamp())
+
+
 def get_history_yfinance(symbol: str, timeframe: str) -> list:
     interval = _YF_INTERVAL_MAP.get(timeframe, "1d")
-    period = _YF_PERIOD_MAP.get(timeframe, "1y")
-    ticker = yf.Ticker(symbol)
-    df = ticker.history(period=period, interval=interval, auto_adjust=True)
-    if df.empty:
+    period   = _YF_PERIOD_MAP.get(timeframe, "1y")
+
+    try:
+        ticker = yf.Ticker(symbol)
+        df = ticker.history(period=period, interval=interval, auto_adjust=True, repair=False)
+    except Exception as e:
+        print(f"[yfinance] download error for {symbol}: {e}")
         return []
-    df = df.dropna()
+
+    if df is None or df.empty:
+        print(f"[yfinance] no data for {symbol} ({interval}/{period})")
+        return []
+
+    df = df.dropna(subset=["Open", "High", "Low", "Close"])
+    df = df[df["Volume"] >= 0]   # keep zero-volume rows (pre/post market may have none)
+
     result = []
     for ts, row in df.iterrows():
-        t = int(ts.timestamp())
+        t = _to_unix(ts)
+        if t <= 0:
+            continue
         result.append({
-            "time": t,
-            "open": round(float(row["Open"]), 4),
-            "high": round(float(row["High"]), 4),
-            "low": round(float(row["Low"]), 4),
-            "close": round(float(row["Close"]), 4),
+            "time":   t,
+            "open":   round(float(row["Open"]),   4),
+            "high":   round(float(row["High"]),   4),
+            "low":    round(float(row["Low"]),     4),
+            "close":  round(float(row["Close"]),  4),
             "volume": round(float(row["Volume"]), 2),
         })
-    return result
+
+    # Lightweight Charts requires strictly ascending time; deduplicate
+    seen = set()
+    unique = []
+    for c in result:
+        if c["time"] not in seen:
+            seen.add(c["time"])
+            unique.append(c)
+    unique.sort(key=lambda x: x["time"])
+    return unique
 
 
 def get_price_yfinance(symbol: str) -> float:
-    ticker = yf.Ticker(symbol)
-    info = ticker.fast_info
     try:
-        return float(info.last_price)
+        info = yf.Ticker(symbol).fast_info
+        price = float(info.last_price)
+        if price and price > 0:
+            return price
     except Exception:
-        hist = ticker.history(period="1d", interval="1m")
-        if not hist.empty:
-            return float(hist["Close"].iloc[-1])
-        return 0.0
+        pass
+    # Fallback: last 1-minute bar
+    try:
+        df = yf.Ticker(symbol).history(period="1d", interval="1m", auto_adjust=True)
+        if not df.empty:
+            return float(df["Close"].iloc[-1])
+    except Exception:
+        pass
+    return 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -91,10 +132,8 @@ _HL_INTERVAL_MAP = {
 def get_history_hyperliquid(symbol: str, timeframe: str) -> list:
     import requests as req
     interval = _HL_INTERVAL_MAP.get(timeframe, "1h")
-    # Hyperliquid uses coin names like BTC, ETH (strip -USD etc.)
     coin = symbol.split("-")[0].split("/")[0].upper()
     end_ms = int(time.time() * 1000)
-    # Request ~500 candles worth of data
     interval_ms = {
         "1m": 60_000, "5m": 300_000, "15m": 900_000, "30m": 1_800_000,
         "1h": 3_600_000, "4h": 14_400_000, "1d": 86_400_000, "1w": 604_800_000,
@@ -111,11 +150,11 @@ def get_history_hyperliquid(symbol: str, timeframe: str) -> list:
         result = []
         for c in candles:
             result.append({
-                "time": int(c["t"] // 1000),
-                "open": float(c["o"]),
-                "high": float(c["h"]),
-                "low": float(c["l"]),
-                "close": float(c["c"]),
+                "time":   int(c["t"] // 1000),
+                "open":   float(c["o"]),
+                "high":   float(c["h"]),
+                "low":    float(c["l"]),
+                "close":  float(c["c"]),
                 "volume": float(c["v"]),
             })
         return result
@@ -165,7 +204,7 @@ PROVIDERS = {
     # Template for adding a new provider:
     # "alpaca": {
     #     "label": "Alpaca (US Stocks)",
-    #     "get_history": get_history_alpaca,   # implement above
+    #     "get_history": get_history_alpaca,
     #     "get_price": get_price_alpaca,
     #     "default_symbols": ["AAPL", "MSFT"],
     #     "timeframes": ["1m", "5m", "1h", "1d"],
